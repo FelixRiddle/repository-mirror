@@ -37,7 +37,7 @@ def get_user_repositories(user=username):
     enpoint_path = f"users/{user}/repos"
     endpoint = f"{api_base_url}{enpoint_path}"
     response = ""
-    response_text = ""
+    data = ""
     
     if(debug):
         print("Endpoint: ", endpoint)
@@ -49,32 +49,16 @@ def get_user_repositories(user=username):
         if(debug):
             print("URL: ", response.url)
             print("Status code: ", response.status_code)
-            print("Response text: ", response.text)
             print("Redirection history: ", response.history)
         
-        response_text = response.text
+        data = response.json()
     except Exception as err:
         print("Error: ", err)
     
-    return response_text
-
-# Get repositories that have a specified amount of stars
-# Just for testing
-def get_repositories_with_stars(query=">1000000"):
-    _show_debug("get_repositories_with_stars")
-    
-    enpoint_path = f"search/repositories?q=stars:{query}"
-    endpoint = f"{api_base_url}{enpoint_path}"
-    
-    response = requests.get(endpoint)
-    #response = requests.get(endpoint, data={"api_key": api_key})
-    if(debug):
-        print("Status code: ", response.status_code)
-        print("Response text: ", response.text)
-    return response.text
+    return data
 
 def print_rate_limits(user=username):
-    _show_debug("get_user_repositories")
+    _show_debug("print_rate_limits")
     
     if token is None:
         if(debug):
@@ -90,11 +74,11 @@ def print_rate_limits(user=username):
     enpoint_path = f"users/{user}"
     endpoint = f"{api_base_url}{enpoint_path}"
     response = ""
-    response_text = ""
+    data = ""
     
-    # if(debug):
-    #     print("Endpoint: ", endpoint)
-    #     print("Headers: ", headers)
+    if(debug):
+        print("Endpoint: ", endpoint)
+        print("Headers: ", headers)
     
     try:
         r = requests.get(endpoint, headers=headers)
@@ -108,8 +92,8 @@ def print_rate_limits(user=username):
         if(r.headers["x-ratelimit-used"] is not None):
             print("X-Ratelimit-Used: ", r.headers["x-ratelimit-used"])
         
-        response_text = r.text
+        data = r.json()
     except Exception as err:
         print("Error: ", err)
     
-    return response_text
+    return data
