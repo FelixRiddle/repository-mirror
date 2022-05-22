@@ -35,6 +35,10 @@ def get_utc_date_from_string(the_date):
     new_date = dateutil.parser.parse(the_date)
     return new_date
 
+def get_older_repositories_count(old_rep_list):
+    _show_debug("get_older_repositories_count():")
+    return len(list(old_rep_list))
+
 # Get a list of older repositories
 def get_older_list(prev_rep_list, new_rep_list):
     """Get a list of older repositories
@@ -51,6 +55,10 @@ def get_older_list(prev_rep_list, new_rep_list):
     # pprint.pprint(prev_rep_list)
     
     for repo in prev_rep_list:
+        # If the key name doesn't exist in the repo object
+        if not "name" in repo:
+            continue
+        
         repo_name = repo["name"]
         try:
             older_repo_date = repo["pushed_at"]
@@ -80,11 +88,22 @@ def get_user_repositories(user=username):
     # For organizations url: https://api.github.com/orgs/perseverancia/repos
     # Filter by type: https://api.github.com/users/octocat/repos?type=owner
     headers = {
+        # IDK github recommends this
+        "Accept": "application/vnd.github.v3+json",
         # Example token
-        "Authorization": f"token {token}"
+        "Authorization": f"token {token}",
+        "Type": "owner",
+        # 100 is the max
+        # TODO: Uncomment after successively doing the recursive get
+        #"Per_page": "100",
+        # Page to request, defaults to
+        "Page": "1",
     }
     
-    enpoint_path = f"users/{user}/repos"
+    # This only lists public repositories
+    #enpoint_path = f"users/{user}/repos"
+    # Get repositories of the authenticated user
+    enpoint_path = f"user/repos"
     endpoint = f"{api_base_url}{enpoint_path}"
     response = ""
     data = ""
