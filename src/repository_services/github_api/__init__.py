@@ -2,6 +2,7 @@
 
 
 """
+import datetime
 import os
 import requests
 
@@ -15,6 +16,40 @@ username = os.environ.get("USERNAME")
 def _show_debug(fn_name=""):
     if(debug):
         print(f"github_api -> {fn_name}")
+
+# Check which one is older
+def is_older(old_date, new_date):
+    if(old_date < new_date):
+        return True
+    else:
+        return False
+
+def get_utc_date_from_string(the_date):
+    return datetime.datetime.strptime(the_date,
+        "%Y-%m-%dT%H:%M:%S.%fZ")
+
+# Get a list of older repositories
+def get_older_list(prev_rep_list, new_rep_list):
+    """Get a list of older repositories
+    
+    Inserts the name of the repository in the list and
+    a boolean determining if it's older or not.
+    If it throws an error when trying to find the key,
+    it will be set to false"""
+    older_repos_list = {}
+    
+    for key, val in prev_rep_list:
+        try:
+            # TODO: Parse dates
+            older_repo_date = prev_rep_list[key]["pushed_at"]
+            new_repo_date = new_rep_list[key]["pushed_at"]
+            
+            older_repos_list[key] = is_older(older_repo_date,
+                new_repo_date)
+        except Exception as err:
+            older_repos_list[key] = False
+    
+    return older_repos_list
 
 # Get the repositories of the user provided
 def get_user_repositories(user=username):
@@ -56,6 +91,7 @@ def get_user_repositories(user=username):
         print("Error: ", err)
     
     return data
+    
 
 def print_rate_limits(user=username):
     _show_debug("print_rate_limits")
