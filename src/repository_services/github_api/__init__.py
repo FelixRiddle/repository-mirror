@@ -3,7 +3,9 @@
 
 """
 import datetime
+import dateutil.parser
 import os
+import pprint
 import requests
 
 api_base_url = "https://api.github.com/"
@@ -18,15 +20,20 @@ def _show_debug(fn_name=""):
         print(f"github_api -> {fn_name}")
 
 # Check which one is older
-def is_older(old_date, new_date):
+def is_older(old_date_utc_string, new_date_utc_string):
+    _show_debug("is_older():")
+    old_date = get_utc_date_from_string(old_date_utc_string)
+    new_date = get_utc_date_from_string(new_date_utc_string)
+    
     if(old_date < new_date):
         return True
     else:
         return False
 
 def get_utc_date_from_string(the_date):
-    return datetime.datetime.strptime(the_date,
-        "%Y-%m-%dT%H:%M:%S.%fZ")
+    _show_debug("get_utc_date_from_string():")
+    new_date = dateutil.parser.parse(the_date)
+    return new_date
 
 # Get a list of older repositories
 def get_older_list(prev_rep_list, new_rep_list):
@@ -36,18 +43,26 @@ def get_older_list(prev_rep_list, new_rep_list):
     a boolean determining if it's older or not.
     If it throws an error when trying to find the key,
     it will be set to false"""
+    _show_debug("get_older_list():")
+    
     older_repos_list = {}
     
-    for key, val in prev_rep_list:
+    # print("Prev_rep_list: ")
+    # pprint.pprint(prev_rep_list)
+    
+    for repo in prev_rep_list:
+        repo_name = repo["name"]
         try:
-            # TODO: Parse dates
-            older_repo_date = prev_rep_list[key]["pushed_at"]
-            new_repo_date = new_rep_list[key]["pushed_at"]
+            older_repo_date = repo["pushed_at"]
+            new_repo_date = repo["pushed_at"]
             
-            older_repos_list[key] = is_older(older_repo_date,
+            older_repos_list[repo_name] = is_older(older_repo_date,
                 new_repo_date)
         except Exception as err:
-            older_repos_list[key] = False
+            if(debug):
+                print("------------------------ EROR --------------------------")
+                print(err)
+            older_repos_list[repo_name] = False
     
     return older_repos_list
 
