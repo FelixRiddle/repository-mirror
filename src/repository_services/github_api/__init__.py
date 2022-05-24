@@ -7,6 +7,7 @@ import dateutil.parser
 import os
 import pprint
 import requests
+import time
 
 api_base_url = "https://api.github.com/"
 # Remember to set to false in the future
@@ -15,13 +16,29 @@ debug = True
 token = os.environ.get("GITHUB_ACCESS_TOKEN")
 username = os.environ.get("USERNAME")
 
+def _get_auth_user_repos_query_params(query_params:dict={}) -> str:
+    full_query_params = ""
+    if(query_params):
+        # Accessibility type
+        # Ex: all, owner, public, private
+        accessibility_type = query_params.get("type", "all")
+        
+        # Page to request, defaults to
+        page_number = str(query_params.get("page", 1))
+        
+        # Repositories per page
+        # 100 is the max
+        # The code belows defaults to 30 if the user didn't provide a value
+        per_page = str(query_params.get("per_page", 30))
+        full_query_params = f"?page={page_number}&per_page={per_page}&type={accessibility_type}"
+    return full_query_params
+
 def _show_debug(fn_name=""):
     if(debug):
         print(f"github_api -> {fn_name}")
 
 # Check which one is older
 def is_older(old_date_utc_string, new_date_utc_string):
-    _show_debug("is_older():")
     old_date = get_utc_date_from_string(old_date_utc_string)
     new_date = get_utc_date_from_string(new_date_utc_string)
     
@@ -31,7 +48,6 @@ def is_older(old_date_utc_string, new_date_utc_string):
         return False
 
 def get_utc_date_from_string(the_date):
-    _show_debug("get_utc_date_from_string():")
     new_date = dateutil.parser.parse(the_date)
     return new_date
 
@@ -75,7 +91,8 @@ def get_older_list(prev_rep_list, new_rep_list):
     return older_repos_list
 
 # Get the repositories of the user provided
-def get_user_repositories(user=username):
+def get_user_repositories(user:str=username,
+        options:dict={"query_params": {}, "headers": {}}):
     _show_debug("get_user_repositories")
     
     if token is None:
@@ -84,27 +101,23 @@ def get_user_repositories(user=username):
         
         return
     
+    full_query_params = _get_auth_user_repos_query_params(options.get("query_params"))
+    
     # Example url: https://api.github.com/felixriddle/repos
     # For organizations url: https://api.github.com/orgs/perseverancia/repos
     # Filter by type: https://api.github.com/users/octocat/repos?type=owner
-    headers = {
-        # IDK github recommends this
-        "Accept": "application/vnd.github.v3+json",
-        # Example token
-        "Authorization": f"token {token}",
-        "Type": "owner",
-        # 100 is the max
-        # TODO: Uncomment after successively doing the recursive get
-        #"Per_page": "100",
-        # Page to request, defaults to
-        "Page": "1",
-    }
+    
+    headers = {}
+    # IDK github recommends this
+    headers["Accept"] = "application/vnd.github.v3+json"
+    # Example token
+    headers["Authorization"] = f"token {token}"
     
     # This only lists public repositories
     #enpoint_path = f"users/{user}/repos"
     # Get repositories of the authenticated user
     enpoint_path = f"user/repos"
-    endpoint = f"{api_base_url}{enpoint_path}"
+    endpoint = f"{api_base_url}{enpoint_path}{full_query_params}"
     response = ""
     data = ""
     
@@ -118,15 +131,54 @@ def get_user_repositories(user=username):
         if(debug):
             print("URL: ", response.url)
             print("Status code: ", response.status_code)
-            print("Redirection history: ", response.history)
         
         data = response.json()
     except Exception as err:
         print("Error: ", err)
     
     return data
+
+# Get every user repository as json
+def get_every_user_repository_as_json(user:str=username,
+        options:dict={ "query_params": { "per_page": 100, }, "sleep": 10, }) -> list:
+    _show_debug("get_every_user_repository_as_json():")
+    
+    # Check if sleep exists and return its value, if not default to
+    # the second parameter
+    sleep_time = options.get("sleep", 10)
+    page = 1
+    all_repositories = []
+    
+    # Query params
+    query_params = options.get("query_params")
+    per_page = 1
+    if(query_params):
+        # Elements per page
+        per_page = query_params.get("per_page", 100)
+    
+    while(True):
+        data:list = get_user_repositories(user, {
+            "query_params": {
+                "per_page": per_page,
+                "page": page,
+                "type": "owner"
+            }
+        })
+        
+        # There are no more repositories to list
+        if(len(data) <= 0):
+            break
+        
+        for dictionary in data:
+            all_repositories.append(dictionary)
+        
+        page += 1
+        time.sleep(sleep_time)
+    
+    return all_repositories
     
 
+# Print the rate limits
 def print_rate_limits(user=username):
     _show_debug("print_rate_limits")
     
